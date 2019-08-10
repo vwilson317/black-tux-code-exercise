@@ -32,14 +32,41 @@ namespace Tests
         {
             //arrange
             var inventory = new Inventory();
-            var expectedInventory = 30;
 
             //act
-            var actual = inventory.ParseInput(@"5,0,1,2
+            var eventRequests = inventory.ParseInput(@"5,0,1,2
                                                 5,0,1,2");
 
             //assert
-            Assert.AreEqual(expectedInventory, actual);
+            Assert.AreEqual(2, eventRequests.Count);
+        }
+
+        [Test]
+        public void CheckInventory_Should_Return_True_When_Any_Count_Less_Than_10()
+        {
+            //arrange
+            var inventory = new Inventory();
+            var eventRequest = inventory.ParseInput(@"5,0,1,2
+                                                5,0,1,2");
+            //act
+            var actual = inventory.CheckInventory(eventRequest);
+
+            //assert
+            Assert.AreEqual(true, actual);
+        }
+
+        [Test]
+        public void CheckInventory_Should_Return_False_When_Small_Count_More_Than_10()
+        {
+            //arrange
+            var inventory = new Inventory();
+            var eventRequest = inventory.ParseInput(@"5,10,1,2
+                                                    5,2,1,2"); //this put the total request for day 5 at 12
+            //act
+            var actual = inventory.CheckInventory(eventRequest);
+
+            //assert
+            Assert.AreEqual(false, actual);
         }
     }
 
@@ -61,7 +88,7 @@ namespace Tests
         {
             var eventRequest = new List<EventRequest>();
             var values = input.Split(',');
-            for (int i = 0; i < values.Length; i += 3)
+            for (int i = 0; i < values.Length -1; i += 3)
             {
                 if (i == 0)
                 {
@@ -113,14 +140,23 @@ namespace Tests
             foreach (var currentRequest in eventRequests)
             {
                 var currentInventory = weekDict[currentRequest.Day];
-                var smallAvailable = currentInventory.Tuxedos.Count(x => x.Size == Size.Small);
-                var mediumAvailable = currentInventory.Tuxedos.Count(x => x.Size == Size.Medium);
-                var largeAvailable = currentInventory.Tuxedos.Count(x => x.Size == Size.Large);
+                try
+                {
+                    var dayInventory = new List<Tux>();
+                    var smallInventory = currentInventory.Tuxedos.Where(x => x.Size == Size.Small).ToList();
+                    smallInventory.RemoveRange(0, currentRequest.DesiredSmall);
+                    var mediumInventory = currentInventory.Tuxedos.Where(x => x.Size == Size.Medium).ToList();
+                        mediumInventory.RemoveRange(0, currentRequest.DesiredMedium);
+                    var largeInventory = currentInventory.Tuxedos.Where(x => x.Size == Size.Large).ToList();
+                    largeInventory.RemoveRange(0, currentRequest.DesiredLarge);
 
-                smallAvailable -= currentRequest.DesiredSmall;
-                mediumAvailable -= currentRequest.DesiredMedium;
-                largeAvailable -= currentRequest.DesiredLarge;
-                if (smallAvailable < 0 || mediumAvailable < 0 || largeAvailable < 0)
+                    dayInventory.AddRange(smallInventory);
+                    dayInventory.AddRange(mediumInventory);
+                    dayInventory.AddRange(largeInventory);
+
+                    weekDict[currentRequest.Day].Tuxedos = dayInventory;
+                }
+                catch (Exception _)
                 {
                     return false;
                 }
@@ -144,9 +180,9 @@ namespace Tests
         {
             return Enumerable.Repeat(new Tux
             {
-                Size = Size.Small,
-                Style = Style.A
-            }, 5).ToList();
+                Size = size,
+                Style = style
+            }, number).ToList();
         }
 
     }
